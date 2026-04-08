@@ -4,11 +4,11 @@ from env.models import Action
 
 app = FastAPI()
 
-# Create environment (default task)
+# Initialize environment
 env = get_task_env("easy")
 
 
-# ✅ Root route (VERY IMPORTANT for Hugging Face UI)
+# ✅ Root route (for Hugging Face UI)
 @app.get("/")
 def home():
     return {
@@ -43,8 +43,18 @@ async def state():
     return result
 
 
-# ✅ Close environment (optional cleanup)
+# ✅ Cleanup on shutdown
 @app.on_event("shutdown")
 async def shutdown():
     await env.close()
-    # rebuild trigger
+
+
+# ✅ REQUIRED for OpenEnv (very important)
+def main():
+    import uvicorn
+    uvicorn.run("server.app:app", host="0.0.0.0", port=7860)
+
+
+# ✅ REQUIRED entrypoint
+if __name__ == "__main__":
+    main()
