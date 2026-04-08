@@ -1,0 +1,20 @@
+[project]
+name = "warehouse-openenv"
+version = "0.1.0"
+description = "Warehouse robot environment for OpenEnv hackathon"
+authors = [
+    { name="Your Name" }
+]
+dependencies = [
+    "pydantic",
+    "fastapi",
+    "uvicorn",
+    "openenv-core",
+    "numpy"
+]
+
+[project.scripts]
+server = "server.app:main"
+
+[tool.openenv]
+entry_point = "env.warehouse_env:WarehouseEnv"

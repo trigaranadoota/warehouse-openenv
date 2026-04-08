@@ -1,0 +1,51 @@
+id: warehouse-openenv
+name: Warehouse Robot Path Optimization
+description: >
+  A real-world simulation of a warehouse robot navigating a grid,
+  avoiding obstacles, optimizing paths, and completing delivery tasks.
+
+entry_point: env.warehouse_env:WarehouseEnv
+
+tasks:
+  - name: easy
+    description: Navigate to goal without obstacles
+    max_steps: 50
+
+  - name: medium
+    description: Navigate to goal avoiding static obstacles
+    max_steps: 50
+
+  - name: hard
+    description: Pick and deliver with obstacles and constraints
+    max_steps: 60
+
+observation_space:
+  type: object
+  properties:
+    robot_pos:
+      type: array
+      items: { type: integer }
+    goal_pos:
+      type: array
+      items: { type: integer }
+    obstacles:
+      type: array
+      items:
+        type: array
+        items: { type: integer }
+    battery:
+      type: number
+    carrying:
+      type: boolean
+
+action_space:
+  type: object
+  properties:
+    action_type:
+      type: string
+      enum: ["MOVE", "PICK", "DROP", "WAIT"]
+    direction:
+      type: string
+      enum: ["UP", "DOWN", "LEFT", "RIGHT"]
+
+reward_range: [-10, 10]
