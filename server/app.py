@@ -1,60 +1,98 @@
 from fastapi import FastAPI
+import uvicorn
 from env.tasks import get_task_env
-from env.models import Action
+import gradio as gr
 
 app = FastAPI()
 
-# Initialize environment
 env = get_task_env("easy")
 
 
-# ✅ Root route (for Hugging Face UI)
+# ---------------- API (Swagger stays) ----------------
 @app.get("/")
-def home():
+def root():
     return {
         "message": "Warehouse Robot OpenEnv API is running 🚀",
         "docs": "/docs",
-        "endpoints": [
-            "POST /reset",
-            "POST /step",
-            "GET /state"
-        ]
+        "endpoints": ["POST /reset", "POST /step", "GET /state"]
     }
 
 
-# ✅ Reset environment
 @app.post("/reset")
 async def reset():
-    result = await env.reset()
-    return result
+    return await env.reset()
 
 
-# ✅ Take a step
 @app.post("/step")
-async def step(action: Action):
-    result = await env.step(action)
-    return result
+async def step(action: str):
+    return await env.step(type("Action", (), {"action": action}))
 
 
-# ✅ Get current state
 @app.get("/state")
 async def state():
-    result = await env.state()
-    return result
+    return await env.state()
 
 
-# ✅ Cleanup on shutdown
-@app.on_event("shutdown")
-async def shutdown():
-    await env.close()
+# ---------------- GRID RENDER ----------------
+def render_grid(state):
+    size = state["grid_size"]
+    grid = [["⬜" for _ in range(size)] for _ in range(size)]
+
+    ax, ay = state["agent_position"]
+    gx, gy = state["goal_position"]
+
+    grid[gx][gy] = "🎯"
+
+    for ox, oy in state["obstacles"]:
+        grid[ox][oy] = "⬛"
+
+    grid[ax][ay] = "🤖"
+
+    return "\n".join([" ".join(row) for row in grid])
 
 
-# ✅ REQUIRED for OpenEnv (very important)
+# ---------------- UI FUNCTIONS ----------------
+async def reset_ui():
+    state = await env.reset()
+    return render_grid(state)
+
+
+async def move(action):
+    result = await env.step(type("Action", (), {"action": action}))
+    return render_grid(result["state"])
+
+
+# ---------------- UI ----------------
+def build_ui():
+    with gr.Blocks() as demo:
+        gr.Markdown("# 🤖 Warehouse Robot Simulator")
+        gr.Markdown("Move the robot to the goal while avoiding obstacles")
+
+        output = gr.Textbox(label="Grid", lines=10)
+
+        btn_reset = gr.Button("🔄 Reset")
+
+        with gr.Row():
+            btn_up = gr.Button("⬆️")
+        with gr.Row():
+            btn_left = gr.Button("⬅️")
+            btn_down = gr.Button("⬇️")
+            btn_right = gr.Button("➡️")
+
+        btn_reset.click(reset_ui, outputs=output)
+        btn_up.click(lambda: move("up"), outputs=output)
+        btn_down.click(lambda: move("down"), outputs=output)
+        btn_left.click(lambda: move("left"), outputs=output)
+        btn_right.click(lambda: move("right"), outputs=output)
+
+    return demo
+
+
+# ---------------- RUN ----------------
 def main():
-    import uvicorn
-    uvicorn.run("server.app:app", host="0.0.0.0", port=7860)
+    demo = build_ui()
+    demo.launch(server_name="0.0.0.0", server_port=7860)
 
 
-# ✅ REQUIRED entrypoint
 if __name__ == "__main__":
     main()
