@@ -6,6 +6,14 @@ import matplotlib.pyplot as plt
 from collections import deque
 from fastapi import FastAPI
 
+# ---------- GLOBAL STATE ----------
+STATE = {
+    "position": (0, 0),
+    "goal": (5, 5),
+    "grid": 10,
+    "obstacles": []
+}
+
 # ---------- PARSING ----------
 def parse_point(text):
     try:
@@ -79,29 +87,26 @@ def draw(grid, robot, goal, obstacles, path):
 
     return fig
 
-# ---------- MAIN ----------
+# ---------- GRADIO ----------
 def run(grid_size, goal_text, obstacles_text):
-    try:
-        grid = int(grid_size)
-        start = (0, 0)
+    grid = int(grid_size)
+    start = (0, 0)
 
-        goal = parse_point(goal_text)
-        if goal is None:
-            return draw(grid, start, None, [], [])
+    goal = parse_point(goal_text)
+    obstacles = parse_obstacles(obstacles_text)
 
-        obstacles = parse_obstacles(obstacles_text)
-        path = bfs(grid, start, goal, obstacles)
+    STATE["position"] = start
+    STATE["goal"] = goal
+    STATE["grid"] = grid
+    STATE["obstacles"] = obstacles
 
-        if path:
-            return draw(grid, path[-1], goal, obstacles, path)
-        else:
-            return draw(grid, start, goal, obstacles, [])
+    path = bfs(grid, start, goal, obstacles)
 
-    except Exception as e:
-        print("ERROR:", e)
-        return None
+    if path:
+        return draw(grid, path[-1], goal, obstacles, path)
+    else:
+        return draw(grid, start, goal, obstacles, [])
 
-# ---------- GRADIO UI ----------
 with gr.Blocks() as demo:
     gr.Markdown("# 🤖 Warehouse Robot Simulator")
 
@@ -120,13 +125,47 @@ with gr.Blocks() as demo:
 
     btn.click(run, inputs=[grid, goal, obstacles], outputs=output)
 
-# ---------- FINAL APP ----------
+# ---------- FASTAPI ----------
 app = FastAPI()
 
-# UI at root
+# UI
 app = gr.mount_gradio_app(app, demo, path="/")
 
-# ✅ REQUIRED OpenEnv endpoint
+# ✅ REQUIRED ENDPOINTS
+
 @app.post("/openenv/reset")
 def reset():
-    return {"status": "ok"}
+    STATE["position"] = (0, 0)
+    return {"position": STATE["position"]}
+
+@app.post("/openenv/step")
+def step(action: str):
+    x, y = STATE["position"]
+
+    moves = {
+        "UP": (-1, 0),
+        "DOWN": (1, 0),
+        "LEFT": (0, -1),
+        "RIGHT": (0, 1)
+    }
+
+    if action in moves:
+        dx, dy = moves[action]
+        nx, ny = x + dx, y + dy
+
+        if (0 <= nx < STATE["grid"] and
+            0 <= ny < STATE["grid"] and
+            (nx, ny) not in STATE["obstacles"]):
+
+            STATE["position"] = (nx, ny)
+
+    done = STATE["position"] == STATE["goal"]
+
+    return {
+        "position": STATE["position"],
+        "done": done
+    }
+
+@app.get("/openenv/state")
+def state():
+    return STATE
