@@ -128,18 +128,18 @@ with gr.Blocks() as demo:
 # ---------- FASTAPI ----------
 app = FastAPI()
 
-# UI
+# UI stays at root ✅
 app = gr.mount_gradio_app(app, demo, path="/")
 
-# ✅ REQUIRED ENDPOINTS
+# ---------- ✅ OPENENV REQUIRED (CORRECT PATHS) ----------
 
 @app.post("/openenv/reset")
-def reset():
+def openenv_reset():
     STATE["position"] = (0, 0)
     return {"position": STATE["position"]}
 
 @app.post("/openenv/step")
-def step(action: str):
+def openenv_step(action: str):
     x, y = STATE["position"]
 
     moves = {
@@ -167,5 +167,18 @@ def step(action: str):
     }
 
 @app.get("/openenv/state")
-def state():
+def openenv_state():
     return STATE
+
+# ---------- OPTIONAL (for Swagger UI like your screenshot) ----------
+@app.post("/reset")
+def reset():
+    return openenv_reset()
+
+@app.post("/step")
+def step(action: str):
+    return openenv_step(action)
+
+@app.get("/state")
+def state():
+    return openenv_state()
