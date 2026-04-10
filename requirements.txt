@@ -4,6 +4,4 @@ uvicorn
 openenv-core
 numpy
 gradio
-fastapi
-uvicorn
 matplotlib

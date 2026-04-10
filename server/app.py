@@ -5,7 +5,7 @@ import gradio as gr
 import matplotlib.pyplot as plt
 from collections import deque
 from fastapi import FastAPI
-from fastapi.middleware.wsgi import WSGIMiddleware
+import gradio as gr
 
 # ---------- PARSING ----------
 def parse_point(text):
@@ -107,7 +107,7 @@ def run(grid_size, goal_text, obstacles_text):
         print("ERROR:", e)
         return None
 
-# ---------- GRADIO ----------
+# ---------- BUILD GRADIO ----------
 with gr.Blocks() as demo:
     gr.Markdown("# 🤖 Warehouse Robot Simulator")
 
@@ -129,13 +129,13 @@ with gr.Blocks() as demo:
 
     btn.click(run, inputs=[grid, goal, obstacles], outputs=output)
 
-# ---------- COMBINED APP ----------
+# ---------- CORRECT MOUNTING ----------
 from server.api import api as openenv_api
 
 app = FastAPI()
 
-# Mount Gradio properly (FIXED)
-app.mount("/", WSGIMiddleware(demo.server_app))
+# ✅ CORRECT WAY (NO server_app)
+app = gr.mount_gradio_app(app, demo, path="/")
 
-# Mount API
+# mount API
 app.mount("/api", openenv_api)
