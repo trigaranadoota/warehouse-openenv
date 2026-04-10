@@ -6,3 +6,4 @@ numpy
 gradio
 fastapi
 uvicorn
+matplotlib

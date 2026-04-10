@@ -6,6 +6,7 @@ import gradio as gr
 import matplotlib.pyplot as plt
 import numpy as np
 from collections import deque
+import time
 
 # ---------------- PATHFINDING (BFS) ----------------
 def find_path(grid_size, start, goal, obstacles):
@@ -35,16 +36,12 @@ def find_path(grid_size, start, goal, obstacles):
 
 # ---------------- GRID DRAW ----------------
 def draw_grid(grid_size, robot, goal, obstacles, path):
-    grid = np.zeros((grid_size, grid_size))
-
     fig, ax = plt.subplots(figsize=(5,5))
     ax.set_xlim(0, grid_size)
     ax.set_ylim(0, grid_size)
-
-    # Background
     ax.set_facecolor("white")
 
-    # Draw grid lines
+    # Grid lines
     for x in range(grid_size+1):
         ax.axhline(x, color='gray', linewidth=0.5)
         ax.axvline(x, color='gray', linewidth=0.5)
@@ -57,7 +54,7 @@ def draw_grid(grid_size, robot, goal, obstacles, path):
     gx, gy = goal
     ax.add_patch(plt.Rectangle((gy, grid_size-gx-1), 1, 1, color='green'))
 
-    # Path
+    # Path (light blue)
     for px, py in path:
         ax.add_patch(plt.Rectangle((py, grid_size-px-1), 1, 1, color='lightblue', alpha=0.3))
 
@@ -75,8 +72,8 @@ def draw_grid(grid_size, robot, goal, obstacles, path):
     return fig
 
 
-# ---------------- MAIN LOGIC ----------------
-def run_simulation(grid_size, goal_x, goal_y, obstacles_text):
+# ---------------- SIMULATION ----------------
+def run_simulation(grid_size, goal_x, goal_y, obstacles_text, episodes):
     grid_size = int(grid_size)
     goal = (int(goal_x), int(goal_y))
     robot = (0, 0)
@@ -90,23 +87,35 @@ def run_simulation(grid_size, goal_x, goal_y, obstacles_text):
 
     path = find_path(grid_size, robot, goal, obstacles)
 
-    fig = draw_grid(grid_size, robot, goal, obstacles, path)
+    frames = []
 
-    return fig, str(path), str(obstacles), str(goal), grid_size
+    if not path:
+        fig = draw_grid(grid_size, robot, goal, obstacles, [])
+        return [fig], "No path found", str(obstacles), str(goal), grid_size
+
+    # Smooth animation using episodes
+    step_delay = max(0.01, 0.2 - (episodes * 0.003))
+
+    for step in path:
+        fig = draw_grid(grid_size, step, goal, obstacles, path)
+        frames.append(fig)
+        time.sleep(step_delay)
+
+    return frames, str(path), str(obstacles), str(goal), grid_size
 
 
 # ---------------- UI ----------------
 with gr.Blocks() as demo:
 
     gr.Markdown("# 🤖 Warehouse Robot Simulator")
-    gr.Markdown("AI finds optimal path automatically")
+    gr.Markdown("AI finds optimal path and animates movement")
 
     with gr.Row():
 
-        # LEFT: GRID
-        grid_output = gr.Plot()
+        # LEFT SIDE → GRID ANIMATION
+        grid_output = gr.Gallery(label="Simulation", columns=1)
 
-        # RIGHT: CONTROLS
+        # RIGHT SIDE → CONTROLS
         with gr.Column():
 
             start_btn = gr.Button("▶ Start / Recompute")
@@ -121,6 +130,8 @@ with gr.Blocks() as demo:
                 value="1,1\n1,2\n2,2"
             )
 
+            episodes = gr.Slider(1, 50, value=10, step=1, label="Episodes (Speed Control)")
+
             path_box = gr.Textbox(label="Path")
             obs_box = gr.Textbox(label="Obstacle Coordinates")
             goal_box = gr.Textbox(label="Goal Coordinates")
@@ -129,15 +140,15 @@ with gr.Blocks() as demo:
     # Button trigger
     start_btn.click(
         run_simulation,
-        inputs=[grid_size, goal_x, goal_y, obstacles],
+        inputs=[grid_size, goal_x, goal_y, obstacles, episodes],
         outputs=[grid_output, path_box, obs_box, goal_box, grid_box]
     )
 
-    # Auto update when values change
-    for inp in [grid_size, goal_x, goal_y, obstacles]:
+    # Auto update
+    for inp in [grid_size, goal_x, goal_y, obstacles, episodes]:
         inp.change(
             run_simulation,
-            inputs=[grid_size, goal_x, goal_y, obstacles],
+            inputs=[grid_size, goal_x, goal_y, obstacles, episodes],
             outputs=[grid_output, path_box, obs_box, goal_box, grid_box]
         )
 
