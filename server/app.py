@@ -77,9 +77,6 @@ def draw(grid, robot, goal, obstacles, path):
     ax.add_patch(plt.Rectangle((ry, rx), 1, 1, color='red'))
     ax.text(ry+0.5, rx+0.5, "R", ha='center', va='center', color='white')
 
-    ax.set_xticks(range(grid))
-    ax.set_yticks(range(grid))
-
     return fig
 
 # ---------- MAIN ----------
@@ -104,7 +101,7 @@ def run(grid_size, goal_text, obstacles_text):
         print("ERROR:", e)
         return None
 
-# ---------- GRADIO ----------
+# ---------- GRADIO UI ----------
 with gr.Blocks() as demo:
     gr.Markdown("# 🤖 Warehouse Robot Simulator")
 
@@ -113,11 +110,8 @@ with gr.Blocks() as demo:
 
         with gr.Column():
             btn = gr.Button("▶ Start")
-
             grid = gr.Number(value=10, label="Grid Size")
-
             goal = gr.Textbox(value="(5,5)", label="Destination (x,y)")
-
             obstacles = gr.Textbox(
                 label="Obstacles (one per line)",
                 placeholder="(1,1)\n(2,2)",
@@ -126,13 +120,15 @@ with gr.Blocks() as demo:
 
     btn.click(run, inputs=[grid, goal, obstacles], outputs=output)
 
-# ---------- COMBINE (FIXED ROUTING) ----------
+# ---------- FINAL APP ----------
 from server.api import api as openenv_api
 
 app = FastAPI()
 
-# ✅ Mount API at ROOT (IMPORTANT FIX)
-app.mount("/", openenv_api)
+# ✅ Mount UI as MAIN PAGE
+app = gr.mount_gradio_app(app, demo, path="/")
 
-# ✅ Mount UI separately
-app = gr.mount_gradio_app(app, demo, path="/ui")
+# ✅ Add ONLY the required endpoint manually
+@app.post("/openenv/reset")
+def reset():
+    return {"status": "ok"}
