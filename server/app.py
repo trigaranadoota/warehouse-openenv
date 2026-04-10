@@ -121,14 +121,12 @@ with gr.Blocks() as demo:
     btn.click(run, inputs=[grid, goal, obstacles], outputs=output)
 
 # ---------- FINAL APP ----------
-from server.api import api as openenv_api
-
 app = FastAPI()
 
-# ✅ Mount UI as MAIN PAGE
+# UI at root
 app = gr.mount_gradio_app(app, demo, path="/")
 
-# ✅ Add ONLY the required endpoint manually
+# ✅ REQUIRED OpenEnv endpoint
 @app.post("/openenv/reset")
 def reset():
     return {"status": "ok"}
