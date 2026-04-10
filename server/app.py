@@ -1,14 +1,20 @@
+import sys
+import os
+
+# Fix import path for Docker
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 from fastapi import FastAPI
-import uvicorn
 from env.tasks import get_task_env
 import gradio as gr
 
 app = FastAPI()
 
+# Initialize environment
 env = get_task_env("easy")
 
 
-# ---------------- API (Swagger stays) ----------------
+# ---------------- API ----------------
 @app.get("/")
 def root():
     return {
@@ -74,6 +80,7 @@ def build_ui():
 
         with gr.Row():
             btn_up = gr.Button("⬆️")
+
         with gr.Row():
             btn_left = gr.Button("⬅️")
             btn_down = gr.Button("⬇️")
